@@ -1,0 +1,101 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: false
+          lower-case-service-id: true
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_FIRST
+      routes:
+        - id: auth-openapi
+          uri: lb://auth-service
+          predicates:
+            - Path=/auth/v3/api-docs,/auth/v3/api-docs/**
+          filters:
+            - RewritePath=/auth/(?<path>.*), /$\{path}
+
+        - id: application-openapi
+          uri: lb://application-service
+          predicates:
+            - Path=/applications/v3/api-docs,/applications/v3/api-docs/**
+          filters:
+            - RewritePath=/applications/(?<path>.*), /$\{path}
+
+        - id: document-openapi
+          uri: lb://document-service
+          predicates:
+            - Path=/documents/v3/api-docs,/documents/v3/api-docs/**
+          filters:
+            - RewritePath=/documents/(?<path>.*), /$\{path}
+
+        - id: admin-openapi
+          uri: lb://admin-service
+          predicates:
+            - Path=/admin/v3/api-docs,/admin/v3/api-docs/**
+          filters:
+            - RewritePath=/admin/(?<path>.*), /$\{path}
+
+        - id: auth-service
+          uri: lb://auth-service
+          predicates:
+            - Path=/auth/**
+
+        - id: application-service
+          uri: lb://application-service
+          predicates:
+            - Path=/applications/**
+
+        - id: document-service
+          uri: lb://document-service
+          predicates:
+            - Path=/documents/**
+
+        - id: admin-service
+          uri: lb://admin-service
+          predicates:
+            - Path=/admin/**
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+    fetch-registry: true
+    register-with-eureka: true
+  instance:
+    prefer-ip-address: true
+
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    urls:
+      - name: Auth Service
+        url: /auth/v3/api-docs
+      - name: Application Service
+        url: /applications/v3/api-docs
+      - name: Document Service
+        url: /documents/v3/api-docs
+      - name: Admin Service
+        url: /admin/v3/api-docs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway,metrics
+  tracing:
+    sampling:
+      probability: ${TRACING_PROBABILITY:1.0}
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}
